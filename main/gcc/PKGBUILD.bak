@@ -32,7 +32,8 @@ prepare() {
 #1.安装proot，指令:apt install proot
 #2.修改termux-chroot，指令:nano $PREFIX/bin/termux-chroot，找到"-b /data:/data"，修改为"-b $PREFIX;$PREFIX"，然后Ctrl+X退出，按y保存
 #3.输入termux-chroot，回车，进入一个虚拟环境，然后输入:mkdir -p /data/data/bin.mt.plus/files/term/usr来创建MT管理器的$PREFIX目录
-#4.然后输入termux-chroot进入虚拟环境，进入构建目录（PKGBUILD所在的目录），输入makepkg -d 即可
+#4.修改fix.patch，把最底下的"-rpath /data/data/com.termux/files/usr"修改成"-rpath /data/data/bin.mt.plus/files/term/usr"，然后Ctrl+X退出，按y保存
+#5.然后输入termux-chroot进入虚拟环境，进入构建目录（PKGBUILD所在的目录），输入makepkg -d 即可
         read -p "请输入[1/2]:" install
         case $install in
         1)
