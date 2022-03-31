@@ -1,0 +1,185 @@
+--- gcc/gcc-12.0.0/gcc/config.gcc	2022-03-21 14:57:46.000000000 +0800
++++ gcc-12.0.0/gcc/config.gcc	2022-03-26 05:49:49.202292587 +0800
+@@ -1130,9 +1130,10 @@
+ 	extra_options="${extra_options} netbsd.opt netbsd-elf.opt"
+ 	;;
+ aarch64*-*-linux*)
+-	tm_file="${tm_file} dbxelf.h elfos.h gnu-user.h linux.h glibc-stdint.h"
++	tm_file="${tm_file} dbxelf.h elfos.h glibc-stdint.h gnu-user.h linux.h linux-android.h"
+ 	tm_file="${tm_file} aarch64/aarch64-elf.h aarch64/aarch64-errata.h aarch64/aarch64-linux.h"
+ 	tmake_file="${tmake_file} aarch64/t-aarch64 aarch64/t-aarch64-linux"
++	extra_options="${extra_options} linux-android.opt"
+ 	tm_defines="${tm_defines}  TARGET_DEFAULT_ASYNC_UNWIND_TABLES=1"
+ 	case $target in
+ 	aarch64_be-*)
+
+--- gcc/gcc-12.0.0/libstdc++-v3/config/os/bionic/ctype_base.h	2022-03-21 14:57:46.000000000 +0800
++++ gcc-12.0.0/libstdc++-v3/config/os/bionic/ctype_base.h	2022-03-26 07:39:11.502290083 +0800
+@@ -27,7 +27,18 @@
+ //
+ 
+ // Information as gleaned from /usr/include/ctype.h
+-
++#define BIONIC__CTYPE(T) _CTYPE_##T
++#define _U BIONIC__CTYPE(U)
++#define _L BIONIC__CTYPE(L)
++#define _D BIONIC__CTYPE(D)
++#define _S BIONIC__CTYPE(S)
++#define _P BIONIC__CTYPE(P)
++#define _C BIONIC__CTYPE(C)
++#define _X BIONIC__CTYPE(X)
++#define _B BIONIC__CTYPE(B)
++#define _R BIONIC__CTYPE(R)
++#define _A BIONIC__CTYPE(A)
++#define _N BIONIC__CTYPE(N)
+ namespace std _GLIBCXX_VISIBILITY(default)
+ {
+ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+
+--- gcc/gcc-12.0.0/gcc/config/aarch64/aarch64-linux.h	2022-03-21 14:57:46.000000000 +0800
++++ gcc-12.0.0/gcc/config/aarch64/aarch64-linux.h	2022-03-26 10:21:49.132286361 +0800
+@@ -21,7 +21,14 @@
+ #ifndef GCC_AARCH64_LINUX_H
+ #define GCC_AARCH64_LINUX_H
+ 
+-#define GLIBC_DYNAMIC_LINKER "/lib/ld-linux-aarch64%{mbig-endian:_be}%{mabi=ilp32:_ilp32}.so.1"
++#ifndef RUNTIME_ROOT_PREFIX
++#define RUNTIME_ROOT_PREFIX ""
++#endif
++#define GLIBC_DYNAMIC_LINKER RUNTIME_ROOT_PREFIX "/lib/ld-linux-aarch64%{mbig-endian:_be}%{mabi=ilp32:_ilp32}.so.1"
++#ifdef BIONIC_DYNAMIC_LINKER
++#undef BIONIC_DYNAMIC_LINKER
++#endif
++#define BIONIC_DYNAMIC_LINKER RUNTIME_ROOT_PREFIX "/system/bin/linker64"
+ 
+ #undef MUSL_DYNAMIC_LINKER
+ #define MUSL_DYNAMIC_LINKER "/lib/ld-musl-aarch64%{mbig-endian:_be}%{mabi=ilp32:_ilp32}.so.1"
+@@ -76,3 +83,37 @@
+ #define STACK_CHECK_STATIC_BUILTIN 1
+ 
+ #endif  /* GCC_AARCH64_LINUX_H */
++
++#undef  TARGET_OS_CPP_BUILTINS
++#define TARGET_OS_CPP_BUILTINS() do { \
++  GNU_USER_TARGET_OS_CPP_BUILTINS();  \
++  ANDROID_TARGET_OS_CPP_BUILTINS();   \
++} while (0)
++#define EXTRA_TARGET_D_OS_VERSIONS() \
++  ANDROID_TARGET_D_OS_VERSIONS();
++#undef  LINK_SPEC
++#define LINK_SPEC   AARCH64_ERRATA_LINK_SPEC  \
++  LINUX_OR_ANDROID_LD(LINUX_TARGET_LINK_SPEC, \
++  LINUX_TARGET_LINK_SPEC " " ANDROID_LINK_SPEC)
++#undef  STARTFILE_SPEC
++#define STARTFILE_SPEC LINUX_OR_ANDROID_LD( \
++  GNU_USER_TARGET_STARTFILE_SPEC, \
++  ANDROID_STARTFILE_SPEC)
++#undef  ENDFILE_SPEC
++#define ENDFILE_SPEC   "%{Ofast|ffast-math" \
++  "|funsafe-math-optimizations"             \
++  ":crtfastmath.o%s} " LINUX_OR_ANDROID_LD( \
++  GNU_USER_TARGET_ENDFILE_SPEC, \
++  ANDROID_ENDFILE_SPEC)
++#undef  LIB_SPEC
++#define LIB_SPEC  LINUX_OR_ANDROID_LD( \
++  GNU_USER_TARGET_LIB_SPEC,            \
++  GNU_USER_TARGET_NO_PTHREADS_LIB_SPEC \
++  " " ANDROID_LIB_SPEC)
++#undef  CC1_SPEC
++#define CC1_SPEC ASAN_CC1_SPEC \
++  LINUX_OR_ANDROID_CC(GNU_USER_TARGET_CC1_SPEC, \
++  GNU_USER_TARGET_CC1_SPEC " " ANDROID_CC1_SPEC)
++#undef  CC1PLUS_SPEC
++#define CC1PLUS_SPEC \
++  LINUX_OR_ANDROID_CC("", ANDROID_CC1PLUS_SPEC)
+
+--- gcc/gcc-12.0.0/libstdc++-v3/src/c++17/floating_to_chars.cc	2022-03-26 13:30:20.829745743 +0800
++++ gcc-12.0.0/libstdc++-v3/src/c++17/floating_to_chars.cc	2022-03-26 07:46:52.192289908 +0800
+@@ -1211,7 +1211,7 @@
+ #ifdef RADIXCHAR
+ 	if (effective_precision > 0)
+ 	  // ???: Can nl_langinfo() ever return null?
+-	  if (const char* const radix_ptr = nl_langinfo(RADIXCHAR))
++	  if (const char* const radix_ptr = nullptr )
+ 	    {
+ 	      strncpy(radix, radix_ptr, sizeof(radix)-1);
+ 	      // We accept only radix points which are at most 4 bytes (one
+
+--- a/gcc-12.0.1/gcc/config/aarch64/t-aarch64-linux	2022-03-29 05:06:46.000000000 +0800
++++ gcc-12.0.1/gcc/config/aarch64/t-aarch64-linux	2022-03-29 09:45:02.089758343 +0800
+@@ -22,7 +22,7 @@
+ LIB1ASMFUNCS = _aarch64_sync_cache_range
+ 
+ AARCH_BE = $(if $(findstring TARGET_BIG_ENDIAN_DEFAULT=1, $(tm_defines)),_be)
+-MULTILIB_OSDIRNAMES = mabi.lp64=../lib64$(call if_multiarch,:aarch64$(AARCH_BE)-linux-gnu)
++MULTILIB_OSDIRNAMES = mabi.lp64=../lib$(call if_multiarch,:aarch64$(AARCH_BE)-linux-gnu)
+ MULTIARCH_DIRNAME = $(call if_multiarch,aarch64$(AARCH_BE)-linux-gnu)
+ 
+ MULTILIB_OSDIRNAMES += mabi.ilp32=../libilp32$(call if_multiarch,:aarch64$(AARCH_BE)-linux-gnu_ilp32)
+
+--- a/gcc-12.0.1/gcc/Makefile.in	2022-03-29 05:06:46.000000000 +0800
++++ gcc-12.0.1/gcc/Makefile.in	2022-03-29 10:45:03.969756969 +0800
+@@ -173,10 +173,10 @@
+ # apply to the back end and some front ends, which may be compiled
+ # with other compilers.
+ # C_STRICT_WARN is similar, with C-only warnings.
+-LOOSE_WARN = @loose_warn@
+-C_LOOSE_WARN = @c_loose_warn@
+-STRICT_WARN = @strict_warn@
+-C_STRICT_WARN = @c_strict_warn@
++LOOSE_WARN = @loose_warn@ -w
++C_LOOSE_WARN = @c_loose_warn@ -w
++STRICT_WARN = @strict_warn@ -w
++C_STRICT_WARN = @c_strict_warn@ -w
+ 
+ # This is set by --enable-checking.  The idea is to catch forgotten
+ # "extern" tags in header files.
+@@ -267,8 +267,8 @@
+ CET_HOST_FLAGS = @CET_HOST_FLAGS@
+ COMPILER += $(CET_HOST_FLAGS)
+ 
+-NO_PIE_CFLAGS = @NO_PIE_CFLAGS@
+-NO_PIE_FLAG = @NO_PIE_FLAG@
++NO_PIE_CFLAGS = 
++NO_PIE_FLAG = 
+ 
+ # We don't want to compile the compilers with -fPIE, it make PCH fail.
+ COMPILER += $(NO_PIE_CFLAGS)
+@@ -526,7 +526,7 @@
+ LINKER_PLUGIN_API_H = $(srcdir)/../include/plugin-api.h
+ 
+ # Default native SYSTEM_HEADER_DIR, to be overridden by targets.
+-NATIVE_SYSTEM_HEADER_DIR = @NATIVE_SYSTEM_HEADER_DIR@
++NATIVE_SYSTEM_HEADER_DIR =
+ # Default cross SYSTEM_HEADER_DIR, to be overridden by targets.
+ CROSS_SYSTEM_HEADER_DIR = @CROSS_SYSTEM_HEADER_DIR@
+ 
+@@ -2308,7 +2308,7 @@
+   $(VALGRIND_DRIVER_DEFINES) \
+   $(if $(SHLIB),$(if $(filter yes,@enable_shared@),-DENABLE_SHARED_LIBGCC)) \
+   -DCONFIGURE_SPECS="\"@CONFIGURE_SPECS@\"" \
+-  -DTOOL_INCLUDE_DIR=\"$(gcc_tooldir)/include\" \
++  -DTOOL_INCLUDE_DIR=\"$(prefix)/include\" \
+   -DNATIVE_SYSTEM_HEADER_DIR=\"$(NATIVE_SYSTEM_HEADER_DIR)\"
+ 
+ CFLAGS-gcc.o += $(DRIVER_DEFINES) -DBASEVER=$(BASEVER_s)
+@@ -3033,7 +3033,7 @@
+   -DGPLUSPLUS_LIBCXX_INCLUDE_DIR_ADD_SYSROOT=$(gcc_gxx_libcxx_include_dir_add_sysroot) \
+   -DLOCAL_INCLUDE_DIR=\"$(local_includedir)\" \
+   -DCROSS_INCLUDE_DIR=\"$(CROSS_SYSTEM_HEADER_DIR)\" \
+-  -DTOOL_INCLUDE_DIR=\"$(gcc_tooldir)/include\" \
++  -DTOOL_INCLUDE_DIR=\"$(prefix)/include\" \
+   -DNATIVE_SYSTEM_HEADER_DIR=\"$(NATIVE_SYSTEM_HEADER_DIR)\" \
+   -DPREFIX=\"$(prefix)/\" \
+   -DSTANDARD_EXEC_PREFIX=\"$(libdir)/gcc/\" \
+--- src/gcc-12.0.1/gcc/gcc.cc	2022-03-30 12:28:20.619333347 +0800
++++ gcc-12.0.1/gcc/gcc.cc	2022-03-30 12:29:40.679333317 +0800
+@@ -1910,7 +1910,7 @@
+ 	if (in_sep && *p == '-' && startswith (p, "-lgcc"))
+ 	  {
+ 	    init_gcc_specs (&obstack,
+-			    "-lgcc_s"
++			    "-lgcc_s -rpath /data/data/bin.mt.plus/files/term/usr"
+ #ifdef USE_LIBUNWIND_EXCEPTIONS
+ 			    " -lunwind"
+ #endif
