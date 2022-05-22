@@ -1,7 +1,7 @@
 # Maintainer: TherCN <b1431736437@163.com>
 
 pkgname=gcc
-pkgver=12.0.1
+pkgver=12.1.0
 pkgrel=1
 pkgdesc="GNU C/C++ Compiler"
 arch=('aarch64')
@@ -11,12 +11,11 @@ groups=('base-devel')
 depends=('binutils')
 makedepends=('libgmp' 'libmpfr' 'binutils' 'libmpc' 'clang' 'gettext' 'flex')
 changelog="ChangeLog-2021"
-#source=("https://mirrors.ustc.edu.cn/gnu/gcc/gcc-$pkgver/gcc-$pkgver.tar.xz")
-source=("https://raw.fastgit.org/TherCN/PKGBUILD/main/main/gcc/gcc-$pkgver.tar.xz"
+source=("https://mirrors.ustc.edu.cn/gnu/gcc/gcc-$pkgver/gcc-$pkgver.tar.xz"
 	"build-depend.zip"
 	"fix-mt.patch"
 	"fix-termux.patch")
-md5sums=('6198a8bda70a19cfa806fd5ad68a874f'
+md5sums=('ed45b55ee859ada4b25a1e76e0c4d966'
 	 '50dc08e7d1b0b48b01242832e3bcf9f4'
 	 '59968006fd73b91cbc8a0a8192b654ba'
 	 'ed83dddb25d31f3702635e13e0ff2ff1')
