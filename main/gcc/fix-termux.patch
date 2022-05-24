@@ -179,7 +179,7 @@
  	  {
  	    init_gcc_specs (&obstack,
 -			    "-lgcc_s"
-+			    "-lgcc_s -rpath "/data/data/com.termux/files/usr
++			    "-lgcc_s -rpath /data/data/com.termux/files/usr/lib"
  #ifdef USE_LIBUNWIND_EXCEPTIONS
  			    " -lunwind"
  #endif
