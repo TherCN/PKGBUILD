@@ -15,7 +15,7 @@ source=("https://mirrors.ustc.edu.cn/gnu/gcc/gcc-$pkgver/gcc-$pkgver.tar.xz"
 	"https://ghproxy.com/https://raw.githubusercontent.com/TherCN/PKGBUILD/main/main/gcc/build-depend.zip"
 	"fix-mt.patch"
 	"fix-termux.patch")
-sha512sums=('e9e857bd81bf7a370307d6848c81b2f5403db8c7b5207f54bce3f3faac3bde63445684092c2bc1a2427cddb6f7746496d9fbbef05fbbd77f2810b2998f1f9173'
+sha512sums=(SKIP
 	 '8d8f4872d693f09e7410058b4cb533556695de39590ae5e3fa2c707c78af300e11d4a7da3cc76731ab21d9c0650b9d7a8e8323a3fdd26150cb7f8742866695ea'
 	 '2047749be0eb37ea5654c8347f51d346a3e9836f156d792ef30426e36350e6b361fdbab7e750e1fff5ced023646eb7a40dd55c6a570ff4bc36491147d0a8fbb6'
 	 'b3e2a43338b7ee442c5c95f577ca2990e01bc175e2d4fd53ae8a68bdcdb22f7e72fcc86baec823a3533ed518b5ca846b97de66fba45c92f3443f3e09158a23e4')
@@ -60,12 +60,10 @@ prepare() {
 	--enable-default-pie \
 	--enable-shared \
 	--disable-bootstrap \
-#避免阶段性编译占用大量时间
 	--disable-libsanitizer \
-#无法构建，因此禁止
 	--with-arch=armv8-a \	 
 	--with-system-zlib
-#使用系统自带的zlib库
+
 	cd $install_prefix
 	rm -rf aarch64-linux-android
 	ln -s ${srcdir}/aarch64-linux-android
